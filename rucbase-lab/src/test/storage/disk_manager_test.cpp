@@ -122,22 +122,6 @@ TEST_F(DiskManagerTest, PageOperation) {
     // 创建文件
     disk_manager_->create_file(filename);
     EXPECT_EQ(disk_manager_->is_file(filename), true);
-    // test if permitted
-    struct stat file_stat111;
-    if (stat(filename.c_str(), &file_stat111) == 0) {
-        std::cout << "File permissions: ";
-        std::cout << ((file_stat111.st_mode & S_IRUSR) ? "r" : "-");
-        std::cout << ((file_stat111.st_mode & S_IWUSR) ? "w" : "-");
-        std::cout << ((file_stat111.st_mode & S_IXUSR) ? "x" : "-");
-        std::cout << ((file_stat111.st_mode & S_IRGRP) ? "r" : "-");
-        std::cout << ((file_stat111.st_mode & S_IWGRP) ? "w" : "-");
-        std::cout << ((file_stat111.st_mode & S_IXGRP) ? "x" : "-");
-        std::cout << ((file_stat111.st_mode & S_IROTH) ? "r" : "-");
-        std::cout << ((file_stat111.st_mode & S_IWOTH) ? "w" : "-");
-        std::cout << ((file_stat111.st_mode & S_IXOTH) ? "x" : "-");
-        std::cout << std::endl;
-    }
-    // ed
     
     // 打开文件
     int fd = disk_manager_->open_file(filename);

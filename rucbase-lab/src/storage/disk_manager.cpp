@@ -115,20 +115,12 @@ void DiskManager::create_file(const std::string &path) {
     // Todo:
     // 调用open()函数，使用O_CREAT模式
     // 注意不能重复创建相同文件
-    int test;
     if(!is_file(path)){
-        test = open(path.c_str(),O_CREAT | O_RDWR,0666);
+        open(path.c_str(),O_CREAT | O_RDWR,0666); //TODO: IS 0666 CORRECT?
     }
     else{
         throw FileExistsError(path);
     }
-    //test
-    if(test < 0){
-        printf("File_Create error,");
-        printf("errno=%d\n",errno);
-        cout << path << endl;
-    }
-    //ed
     return;
 }
 
@@ -172,13 +164,6 @@ int DiskManager::open_file(const std::string &path) {
         throw FileNotClosedError(path);
     }
     int ret = open(path.c_str(),O_RDWR);
-    //test
-    if(ret < 0){
-        printf("File_Open error,");
-        printf("errno=%d\n",errno);
-        cout << path << endl;
-    }
-    //ed
     path2fd_[path] = ret;
     fd2path_[ret]  = path;
     return ret;
