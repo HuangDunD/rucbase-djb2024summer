@@ -143,7 +143,7 @@ bool BufferPoolManager::flush_page(PageId page_id) {
     std::scoped_lock lock{latch_}; 
     // 1. 查找页表,尝试获取目标页P
     // 1.1 目标页P没有被page_table_记录 ，返回false
-    if(page_table_.find(page_id) == page_table_.end()){//DANGER
+    if(page_table_.find(page_id) == page_table_.end()){
         return false;
     }
     frame_id_t frame_id = page_table_[page_id];
@@ -209,7 +209,7 @@ bool BufferPoolManager::delete_page(PageId page_id) {
     // 3.   将目标页数据写回磁盘，从页表中删除目标页，重置其元数据，将其加入free_list_，返回true
     disk_manager_->write_page(page->get_page_id().fd,page->get_page_id().page_no,page->get_data(),PAGE_SIZE);
     page_table_.erase(page_id);
-    page->reset_memory();//WHY NOT DANGER
+    page->reset_memory();
     page->is_dirty_ = false;
     page->pin_count_ = 0;
     page->id_.page_no = INVALID_PAGE_ID;

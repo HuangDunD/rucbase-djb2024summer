@@ -126,9 +126,9 @@ TEST(RecordManagerTest, SimpleTest) {
         if (mock.empty() || dice < insert_prob) {
             rand_buf(file_handle->file_hdr_.record_size, write_buf);
             Rid rid = file_handle->insert_record(write_buf, context);
+                    //    std::cout << "insert " << rid << '\n'; // operator<<(cout,rid)
             mock[rid] = std::string((char *)write_buf, file_handle->file_hdr_.record_size);
             add_cnt++;
-            //            std::cout << "insert " << rid << '\n'; // operator<<(cout,rid)
         } else {
             // update or erase random rid
             int rid_idx = rand() % mock.size();
@@ -139,17 +139,17 @@ TEST(RecordManagerTest, SimpleTest) {
             auto rid = it->first;
             if (rand() % 2 == 0) {
                 // update
+                // std::cout << "update " << rid << '\n';
                 rand_buf(file_handle->file_hdr_.record_size, write_buf);
                 file_handle->update_record(rid, write_buf, context);
                 mock[rid] = std::string((char *)write_buf, file_handle->file_hdr_.record_size);
                 upd_cnt++;
-                //                std::cout << "update " << rid << '\n';
             } else {
                 // erase
+                // std::cout << "delete " << rid << '\n';
                 file_handle->delete_record(rid, context);
                 mock.erase(rid);
                 del_cnt++;
-                //                std::cout << "delete " << rid << '\n';
             }
         }
         // Randomly re-open file
