@@ -242,6 +242,8 @@ std::pair<IxNodeHandle *, bool> IxIndexHandle::find_leaf_page(const char *key, O
 bool IxIndexHandle::get_value(const char *key, std::vector<Rid> *result, Transaction *transaction) {
     // Todo:
     // 1. 获取目标key值所在的叶子结点
+    // simple latch
+    std::scoped_lock lock{root_latch_};
     auto leaf_pair = find_leaf_page(key,Operation::FIND,transaction,false);
     IxNodeHandle* leaf_hdr = leaf_pair.first;
     // 2. 在叶子节点中查找目标key值的位置，并读取key对应的rid
@@ -362,6 +364,7 @@ void IxIndexHandle::insert_into_parent(IxNodeHandle *old_node, const char *key, 
 page_id_t IxIndexHandle::insert_entry(const char *key, const Rid &value, Transaction *transaction) {
     // Todo:
     // 1. 查找key值应该插入到哪个叶子节点
+    std::scoped_lock lock{root_latch_};
     auto leaf_page = find_leaf_page(key,Operation::INSERT,transaction);
     IxNodeHandle* leaf_node = leaf_page.first;
     // 2. 在该叶子节点中插入键值对
@@ -399,6 +402,7 @@ page_id_t IxIndexHandle::insert_entry(const char *key, const Rid &value, Transac
 bool IxIndexHandle::delete_entry(const char *key, Transaction *transaction) {
     // Todo:
     // 1. 获取该键值对所在的叶子结点
+    std::scoped_lock lock{root_latch_};
     auto leaf_page = find_leaf_page(key,Operation::DELETE,transaction);
     IxNodeHandle* leaf_node = leaf_page.first;
     // 2. 在该叶子结点中删除键值对
