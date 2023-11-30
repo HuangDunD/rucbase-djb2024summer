@@ -198,7 +198,60 @@ void SmManager::drop_table(const std::string& tab_name, Context* context) {
  * @param {Context*} context
  */
 void SmManager::create_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
-    
+    TabMeta& table = db_.get_table(tab_name);
+    if(table.is_index(col_names)){
+        throw IndexExistsError(tab_name,col_names);
+    }
+
+    IndexMeta index;
+    int col_num = col_names.size();
+    std::vector<ColMeta> cols;
+    int tot_len = 0;
+    for(int i=0;i<col_num;i++){
+        auto cur_col_it = table.get_col(col_names[i]);
+        cols.push_back(*cur_col_it);
+        tot_len += cur_col_it->len;
+    }
+    index.tab_name = tab_name;
+    index.col_tot_len = tot_len;
+    index.col_num = col_num;
+    index.cols = cols;
+
+    table.indexes.push_back(index);
+
+    // create b+ tree file?
+    ix_manager_->create_index(tab_name,cols);
+
+    // insert kv pairs into index_hdr
+    auto index_hdr = ix_manager_->open_index(tab_name,cols);
+
+    // get the records from table(rm handle)
+    RmFileHandle* rm_hdr = fhs_.at(tab_name).get();
+    // use rm_scan to traverse the table
+    auto scan = RmScan(rm_hdr);
+    while(!scan.is_end()){
+        Rid rid = scan.rid();
+        // if the table is empty
+        if(rid.slot_no < 0 && rid.page_no==0)
+            break;
+        auto record = rm_hdr->get_record(rid,context);      // record: RmRecord*
+        // record.data是所有col连续存储，要用偏移值找
+        char* key = new char[tot_len+1];
+        key[0] = '\0';
+        int curlen = 0;
+        for(int i=0;i<col_num;i++){
+            // 按顺序拼接每一个col的值
+            strncat(key,record->data+cols[i].offset,cols[i].len);
+            curlen+=cols[i].len;
+            key[curlen] = '\0';
+        }
+        index_hdr->insert_entry(key,rid,context->txn_);
+        scan.next();
+    }
+
+    // insert the index_hdr into ihs_
+    ix_manager_->close_index(index_hdr.get());  //std::move會修改index_hdr的值
+    ihs_.emplace(ix_manager_->get_index_name(tab_name,cols),std::move(index_hdr));
 }
 
 /**

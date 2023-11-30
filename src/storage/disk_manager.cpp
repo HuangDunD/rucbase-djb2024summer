@@ -54,9 +54,15 @@ void DiskManager::read_page(int fd, page_id_t page_no, char *offset, int num_byt
     // 1.lseek()定位到文件头，通过(fd,page_no)可以定位指定页面及其在磁盘文件中的偏移量
     // 2.调用read()函数
     // 注意read返回值与num_bytes不等时，throw InternalError("DiskManager::read_page Error");
-    lseek(fd,page_no*PAGE_SIZE,SEEK_SET);
+    if(lseek(fd,page_no*PAGE_SIZE,SEEK_SET) == -1){
+        throw UnixError();
+    }
     int ret = read(fd,offset,num_bytes);
     if(ret!=num_bytes){
+        //test
+        std::cout << "Only Read " << ret << std::endl;
+        std::cout << "fd's max page_no is " << fd2pageno_[fd] << " while obj page_no is " << page_no << std::endl;
+        //ed
         throw InternalError("DiskManager::read_page Error");
     }
     return;

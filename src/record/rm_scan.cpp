@@ -18,7 +18,7 @@ See the Mulan PSL v2 for more details. */
 RmScan::RmScan(const RmFileHandle *file_handle) : file_handle_(file_handle) {
     // Todo:
     // 初始化file_handle和rid（指向第一个存放了记录的位置）
-    if(file_handle->file_hdr_.num_pages > 1){
+    if (file_handle->file_hdr_.num_pages > 1){
         // 存了记录
         RmPageHandle first_page_handle = file_handle_->fetch_page_handle(1);
         rid_.page_no = 1;
@@ -27,7 +27,7 @@ RmScan::RmScan(const RmFileHandle *file_handle) : file_handle_(file_handle) {
     else{
         // 没有记录
         rid_.page_no = 0;
-        rid_.slot_no = -2; // TODO
+        rid_.slot_no = -1; // TODO
     }
 }
 
@@ -50,6 +50,7 @@ void RmScan::next() {
         page_handle = file_handle_->fetch_page_handle(rid_.page_no);
         rid_.slot_no = Bitmap::first_bit(1,page_handle.bitmap,max_records);
     }
+    // 考虑store page_handle，省去fetch开销
 }
 
 /**
