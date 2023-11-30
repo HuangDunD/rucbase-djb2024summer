@@ -588,11 +588,12 @@ bool IxIndexHandle::coalesce(IxNodeHandle **neighbor_node, IxNodeHandle **node, 
  * @note iid和rid存的不是一个东西，rid是上层传过来的记录位置，iid是索引内部生成的索引槽位置
  */
 Rid IxIndexHandle::get_rid(const Iid &iid) const {
+    // 这个函数有参考
     IxNodeHandle *node = fetch_node(iid.page_no);
     if (iid.slot_no >= node->get_size()) {
         throw IndexEntryNotFoundError();
     }
-    buffer_pool_manager_->unpin_page(node->get_page_id(), false);  // unpin it!
+    buffer_pool_manager_->unpin_page(node->get_page_id(), false);
     return *node->get_rid(iid.slot_no);
 }
 
@@ -625,10 +626,17 @@ Iid IxIndexHandle::upper_bound(const char *key) {
     auto node_pair = find_leaf_page(key,Operation::FIND,nullptr);
     auto node = node_pair.first;
     int index = node->upper_bound(key);
-    int page_no = node->get_page_no();
+    Iid iid;
+    if(index >= node->get_size()){
+        // 分类讨论，实际上应该是取到==的时候，应该返回最末尾的那一个
+        iid = leaf_end();
+    }
+    else{
+        int page_no = node->get_page_no();
+        iid = {.page_no = page_no,.slot_no = index};
+    }
     buffer_pool_manager_->unpin_page(node->get_page_id(),false);
-    return Iid{page_no, index};
-    return Iid{-1, -1};
+    return iid;
 }
 
 /**
@@ -640,7 +648,7 @@ Iid IxIndexHandle::upper_bound(const char *key) {
 Iid IxIndexHandle::leaf_end() const {
     IxNodeHandle *node = fetch_node(file_hdr_->last_leaf_);
     Iid iid = {.page_no = file_hdr_->last_leaf_, .slot_no = node->get_size()};
-    buffer_pool_manager_->unpin_page(node->get_page_id(), false);  // unpin it!
+    buffer_pool_manager_->unpin_page(node->get_page_id(), false);
     return iid;
 }
 
@@ -665,7 +673,6 @@ Iid IxIndexHandle::leaf_begin() const {
 IxNodeHandle *IxIndexHandle::fetch_node(int page_no) const {
     Page *page = buffer_pool_manager_->fetch_page(PageId{fd_, page_no});
     IxNodeHandle *node = new IxNodeHandle(file_hdr_, page);
-    
     return node;
 }
 
