@@ -7,7 +7,7 @@ THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
 EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
-
+// #define DEBUG
 #include "sm_manager.h"
 
 #include <sys/stat.h>
@@ -85,7 +85,28 @@ void SmManager::drop_db(const std::string& db_name) {
  * @param {string&} db_name 数据库名称，与文件夹同名
  */
 void SmManager::open_db(const std::string& db_name) {
-    
+    // 1. 判断数据库是否存在，若不存在抛出错误
+    if(!is_dir(db_name)){
+        throw DatabaseNotFoundError(db_name);
+    }
+    // 2. 进入数据库文件夹，加载元数据
+    if(chdir(db_name.c_str())<0){
+        throw UnixError();
+    }
+    std::ifstream ofs(DB_META_NAME);
+    ofs >> db_;
+    // 3. 加载fhs_和ihs_
+    for(auto table=db_.tabs_.begin();table!=db_.tabs_.end();table++){
+        std::string tab_name = table->first;
+        // auto table_hdr_ptr = rm_manager_->open_file(tab_name);
+        fhs_.emplace(table->first,rm_manager_->open_file(tab_name));
+
+        TabMeta tab_meta = table->second;
+        for(auto index : tab_meta.indexes){
+            // auto index_hdr_ptr =  ix_manager_->open_index(table->first,index.cols);
+            ihs_.emplace(table->first,ix_manager_->open_index(table->first,index.cols));
+        }
+    }
 }
 
 /**
@@ -101,7 +122,26 @@ void SmManager::flush_meta() {
  * @description: 关闭数据库并把数据落盘
  */
 void SmManager::close_db() {
-    
+    // 1. 元数据信息落盘
+    std::ofstream ofs(DB_META_NAME);
+    ofs << db_;
+    // 2. 关闭所有文件，close_file里实现落盘
+    for(auto it = fhs_.begin();it!=fhs_.end();it++){
+        rm_manager_->close_file(it->second.get());
+    }
+    for(auto it = ihs_.begin();it!=ihs_.end();it++){
+        ix_manager_->close_index(it->second.get());
+    }
+    // 3. 清空ihs_,fhs_
+    ihs_.clear();
+    fhs_.clear();
+    // 4. 清空元数据db_
+    db_.name_ = "";
+    db_.tabs_.clear();
+    // 回到根目录
+    if(chdir("..") < 0){
+        throw UnixError();
+    }
 }
 
 /**
@@ -116,8 +156,8 @@ void SmManager::show_tables(Context* context) {
     printer.print_separator(context);
     printer.print_record({"Tables"}, context);
     printer.print_separator(context);
-    for (auto &entry : db_.tabs_) {
-        auto &tab = entry.second;
+    for (auto entry=db_.tabs_.begin();entry!=db_.tabs_.end();entry++) {
+        auto &tab = entry->second;
         printer.print_record({tab.name}, context);
         outfile << "| " << tab.name << " |\n";
     }
@@ -188,7 +228,25 @@ void SmManager::create_table(const std::string& tab_name, const std::vector<ColD
  * @param {Context*} context
  */
 void SmManager::drop_table(const std::string& tab_name, Context* context) {
-    
+    //删除相关的数据文件，更新元数据信息
+    // 1. 检查表是否存在
+    if(!db_.is_table(tab_name)){
+        throw TableNotFoundError(tab_name);
+    }
+    // 2. drop_index删除相关索引文件
+    TabMeta& obj_table = db_.get_table(tab_name);
+    auto table_hdr_ptr = fhs_[tab_name].get();
+    for(auto index : obj_table.indexes){
+        drop_index(tab_name, index.cols, context);
+    }
+    // 3. rm_manager删除表文件
+    rm_manager_->close_file(table_hdr_ptr);
+    rm_manager_->destroy_file(tab_name);
+    // 4. db_.tabs_更新，fhs_更新
+    db_.tabs_.erase(tab_name);
+    fhs_.erase(tab_name);
+    // ?元数据flush_meta()
+    // flush_meta();
 }
 
 /**
@@ -250,7 +308,7 @@ void SmManager::create_index(const std::string& tab_name, const std::vector<std:
     }
 
     // insert the index_hdr into ihs_
-    ix_manager_->close_index(index_hdr.get());  //std::move會修改index_hdr的值
+    // ix_manager_->close_index(index_hdr.get());  //std::move會修改index_hdr的值
     ihs_.emplace(ix_manager_->get_index_name(tab_name,cols),std::move(index_hdr));
 }
 
@@ -261,7 +319,19 @@ void SmManager::create_index(const std::string& tab_name, const std::vector<std:
  * @param {Context*} context
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
-    
+    // 1. 拿到对应表，判断索引是否存在
+    TabMeta& table = db_.get_table(tab_name);
+    if(!table.is_index(col_names)){
+        throw IndexNotFoundError(tab_name,col_names);
+    }
+    // 2. ix_manager_删索引文件
+    std::string index_name = ix_manager_->get_index_name(tab_name,col_names);
+    ix_manager_->close_index(ihs_.at(index_name).get());
+    ix_manager_->destroy_index(tab_name,col_names);
+    // 3. 更新ihs_
+    ihs_.erase(index_name);
+    // 4. 更新table
+    table.indexes.erase(table.get_index_meta(col_names));
 }
 
 /**
@@ -271,5 +341,10 @@ void SmManager::drop_index(const std::string& tab_name, const std::vector<std::s
  * @param {Context*} context
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<ColMeta>& cols, Context* context) {
-    
+    std::vector<std::string> col_names;
+    std::string table_name = cols[0].tab_name;
+    for(auto meta : cols){
+        col_names.push_back(meta.name);
+    }
+    drop_index(table_name,col_names,context);
 }

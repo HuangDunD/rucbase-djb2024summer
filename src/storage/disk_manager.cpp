@@ -14,7 +14,7 @@ See the Mulan PSL v2 for more details. */
 #include <string.h>    // for memset
 #include <sys/stat.h>  // for stat
 #include <unistd.h>    // for lseek
-
+#include <cerrno>
 #include <iostream>
 using namespace std;
 
@@ -59,10 +59,6 @@ void DiskManager::read_page(int fd, page_id_t page_no, char *offset, int num_byt
     }
     int ret = read(fd,offset,num_bytes);
     if(ret!=num_bytes){
-        //test
-        std::cout << "Only Read " << ret << std::endl;
-        std::cout << "fd's max page_no is " << fd2pageno_[fd] << " while obj page_no is " << page_no << std::endl;
-        //ed
         throw InternalError("DiskManager::read_page Error");
     }
     return;
