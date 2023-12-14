@@ -196,6 +196,8 @@ void SmManager::desc_table(const std::string& tab_name, Context* context) {
  */
 void SmManager::create_table(const std::string& tab_name, const std::vector<ColDef>& col_defs, Context* context) {
     if (db_.is_table(tab_name)) {
+
+
         throw TableExistsError(tab_name);
     }
     // Create table meta

@@ -37,6 +37,40 @@ class DeleteExecutor : public AbstractExecutor {
     }
 
     std::unique_ptr<RmRecord> Next() override {
+        // 对于rids_中的每一个Rid
+        // 一方面，要从fh_调用delete_record删除记录
+        // 另一方面，要从每个索引里删除这条记录对应的项delete_entry
+        // 1. 从TabMeta tab_获取所有的索引列，从sm_manager_拿到所有的索引句柄
+        int ih_num = tab_.indexes.size();
+        std::vector<IxIndexHandle*> ihs(ih_num);
+        for(int i=0;i<ih_num;i++){
+            ihs[i] = (sm_manager_->ihs_.at(sm_manager_->get_ix_manager()->get_index_name(tab_name_,tab_.indexes[i].cols))).get();
+        }
+        // 2.遍历每一个待删除的rid，进行对应的删除操作
+        // TODO:是否需要检查conds？感觉理论上应该
+        int rid_num = rids_.size();
+        for(int i=0;i<rid_num;i++){
+            auto rec = fh_->get_record(rids_[i],context_);
+            for(int j=0;j<ih_num;j++){
+                IndexMeta index_meta = tab_.indexes[j];
+                // 按顺序拼接多级索引各个列的值，得到key
+                char* key = new char[index_meta.col_tot_len+1];
+                key[0] = '\0';
+                int curlen = 0;
+                for(int k=0;k<index_meta.col_num;k++){
+                    // strncat(key,rec->data+index_meta.cols[k].offset,index_meta.cols[k].len);
+                    memcpy(key+curlen,rec->data+index_meta.cols[k].offset,index_meta.cols[k].len);
+                    curlen += index_meta.cols[k].len;
+                    key[curlen] = '\0';
+                }
+                // 调用delete_entry删除该key
+                ihs[j]->delete_entry(key,context_->txn_);
+            }
+
+            fh_->delete_record(rids_[i],context_);
+            // TODO: delete mark?
+        }
+        // TODO: return what
         return nullptr;
     }
 
