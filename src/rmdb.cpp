@@ -7,7 +7,7 @@ THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
 EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
-// cd build; cmake ..; make -j8
+
 #include <netinet/in.h>
 #include <readline/history.h>
 #include <readline/readline.h>
