@@ -47,10 +47,12 @@ class DeleteExecutor : public AbstractExecutor {
             ihs[i] = (sm_manager_->ihs_.at(sm_manager_->get_ix_manager()->get_index_name(tab_name_,tab_.indexes[i].cols))).get();
         }
         // 2.遍历每一个待删除的rid，进行对应的删除操作
-        // TODO:是否需要检查conds？感觉理论上应该
+        // TODO:是否需要检查conds？
         int rid_num = rids_.size();
         for(int i=0;i<rid_num;i++){
             auto rec = fh_->get_record(rids_[i],context_);
+            RmRecord deleted_rec = RmRecord(rec->size);//lab4
+            memcpy(deleted_rec.data,rec->data,rec->size);
             for(int j=0;j<ih_num;j++){
                 IndexMeta index_meta = tab_.indexes[j];
                 // 按顺序拼接多级索引各个列的值，得到key
@@ -69,6 +71,10 @@ class DeleteExecutor : public AbstractExecutor {
 
             fh_->delete_record(rids_[i],context_);
             // TODO: delete mark?
+
+            // lab4 modify write_set
+            WriteRecord* write_rec = new WriteRecord(WType::DELETE_TUPLE,tab_name_,rids_[i],deleted_rec);
+            context_->txn_->append_write_record(write_rec);
         }
         // TODO: return what
         return nullptr;

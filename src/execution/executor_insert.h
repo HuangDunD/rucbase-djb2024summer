@@ -64,6 +64,10 @@ class InsertExecutor : public AbstractExecutor {
             }
             ih->insert_entry(key, rid_, context_->txn_);
         }
+
+        // lab4 
+        WriteRecord* write_rec = new WriteRecord(WType::INSERT_TUPLE,tab_name_,rid_);
+        context_->txn_->append_write_record(write_rec);
         return nullptr;
     }
     Rid &rid() override { return rid_; }

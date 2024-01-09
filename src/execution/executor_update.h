@@ -40,7 +40,7 @@ class UpdateExecutor : public AbstractExecutor {
     std::unique_ptr<RmRecord> Next() override {
         // 类似于Delete，一方面更新fh_，update_record
         // 另一方面从每个索引里(检查是否由setClause,)delete then insert
-        // 1. 从TabMeta tab_获取setClause涉及的索引列，从sm_manager_拿到所有的索引句柄
+        // 1. 从TabMeta tab_获取所有的索引列，从sm_manager_拿到所有的索引句柄
         int ih_num = tab_.indexes.size();
         std::vector<IxIndexHandle*> ihs(ih_num);
         for(int i=0;i<ih_num;i++){
@@ -50,6 +50,8 @@ class UpdateExecutor : public AbstractExecutor {
         int rid_num = rids_.size();
         for(int i=0;i<rid_num;i++){
             auto rec = fh_->get_record(rids_[i],context_);
+            RmRecord updated_rec = RmRecord(rec->size);         // lab4
+            memcpy(updated_rec.data,rec->data,rec->size);       // lab4
             // 2.1 算新的data
             int set_num = set_clauses_.size();
             char* new_data = new char[rec->size+1];
@@ -84,6 +86,10 @@ class UpdateExecutor : public AbstractExecutor {
             }
             // 2.3 写新data
             fh_->update_record(rids_[i],new_data,context_);
+
+            // lab4 modify write_set
+            WriteRecord* write_rec = new WriteRecord(WType::UPDATE_TUPLE,tab_name_,rids_[i],updated_rec);
+            context_->txn_->append_write_record(write_rec);
         }
         // TODO: return what
         return nullptr;

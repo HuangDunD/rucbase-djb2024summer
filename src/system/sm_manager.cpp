@@ -222,6 +222,7 @@ void SmManager::create_table(const std::string& tab_name, const std::vector<ColD
     fhs_.emplace(tab_name, rm_manager_->open_file(tab_name));
 
     flush_meta();
+    // TODO 加锁?
 }
 
 /**
@@ -235,6 +236,8 @@ void SmManager::drop_table(const std::string& tab_name, Context* context) {
     if(!db_.is_table(tab_name)){
         throw TableNotFoundError(tab_name);
     }
+    // 1.5 加锁
+    context->lock_mgr_->lock_exclusive_on_table(context->txn_,fhs_[tab_name]->GetFd());
     // 2. drop_index删除相关索引文件
     TabMeta& obj_table = db_.get_table(tab_name);
     auto table_hdr_ptr = fhs_[tab_name].get();
@@ -247,8 +250,6 @@ void SmManager::drop_table(const std::string& tab_name, Context* context) {
     // 4. db_.tabs_更新，fhs_更新
     db_.tabs_.erase(tab_name);
     fhs_.erase(tab_name);
-    // ?元数据flush_meta()
-    // flush_meta();
 }
 
 /**
@@ -258,6 +259,9 @@ void SmManager::drop_table(const std::string& tab_name, Context* context) {
  * @param {Context*} context
  */
 void SmManager::create_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
+    // 加锁 TODO 应该加IX吗
+    context->lock_mgr_->lock_IX_on_table(context->txn_,fhs_[tab_name]->GetFd());
+    
     TabMeta& table = db_.get_table(tab_name);
     if(table.is_index(col_names)){
         throw IndexExistsError(tab_name,col_names);
@@ -321,6 +325,8 @@ void SmManager::create_index(const std::string& tab_name, const std::vector<std:
  * @param {Context*} context
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
+    // 0. 加锁 TODO 应该加IX吗
+    context->lock_mgr_->lock_exclusive_on_table(context->txn_,fhs_[tab_name]->GetFd());
     // 1. 拿到对应表，判断索引是否存在
     TabMeta& table = db_.get_table(tab_name);
     if(!table.is_index(col_names)){
