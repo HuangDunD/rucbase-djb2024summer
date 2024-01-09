@@ -85,6 +85,7 @@ class UpdateExecutor : public AbstractExecutor {
                 ihs[j]->insert_entry(newkey,rids_[i],context_->txn_);
             }
             // 2.3 写新data
+            // TODO 这里锁可能也有点问题
             fh_->update_record(rids_[i],new_data,context_);
 
             // lab4 modify write_set

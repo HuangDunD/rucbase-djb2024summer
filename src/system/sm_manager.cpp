@@ -260,8 +260,8 @@ void SmManager::drop_table(const std::string& tab_name, Context* context) {
  */
 void SmManager::create_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
     // 加锁 TODO 应该加IX吗
-    context->lock_mgr_->lock_IX_on_table(context->txn_,fhs_[tab_name]->GetFd());
-    
+    // context->lock_mgr_->lock_IX_on_table(context->txn_,fhs_[tab_name]->GetFd());
+    context->lock_mgr_->lock_shared_on_table(context->txn_,fhs_[tab_name]->GetFd());
     TabMeta& table = db_.get_table(tab_name);
     if(table.is_index(col_names)){
         throw IndexExistsError(tab_name,col_names);
@@ -326,7 +326,9 @@ void SmManager::create_index(const std::string& tab_name, const std::vector<std:
  */
 void SmManager::drop_index(const std::string& tab_name, const std::vector<std::string>& col_names, Context* context) {
     // 0. 加锁 TODO 应该加IX吗
-    context->lock_mgr_->lock_exclusive_on_table(context->txn_,fhs_[tab_name]->GetFd());
+    // context->lock_mgr_->lock_exclusive_on_table(context->txn_,fhs_[tab_name]->GetFd());
+    // context->lock_mgr_->lock_IX_on_table(context->txn_,fhs_[tab_name]->GetFd());
+    context->lock_mgr_->lock_shared_on_table(context->txn_,fhs_[tab_name]->GetFd());
     // 1. 拿到对应表，判断索引是否存在
     TabMeta& table = db_.get_table(tab_name);
     if(!table.is_index(col_names)){

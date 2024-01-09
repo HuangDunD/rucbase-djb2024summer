@@ -107,6 +107,7 @@ void TransactionManager::abort(Transaction * txn, LogManager *log_manager) {
     lock_set->clear();
     // 3. 清空事务相关资源，eg.锁集
     // 4. 把事务日志刷入磁盘中
+    log_manager->flush_log_to_disk();
     // 5. 更新事务状态
     txn->set_state(TransactionState::ABORTED);
 }
