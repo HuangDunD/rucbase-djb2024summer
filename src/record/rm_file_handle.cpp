@@ -20,6 +20,7 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
     // Todo:
     // 0. 加行锁，这里加S是因为之后还会调用update和delete，那里面会有exclusive上锁操作
     // 但在seqscan里会遍历找get_record并判断条件，在这个过程中一直在获取行锁
+    context->lock_mgr_->lock_IS_on_table(context->txn_,fd_);
     context->lock_mgr_->lock_shared_on_record(context->txn_,rid,fd_);
     // 1. 获取指定记录所在的page handle
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
@@ -35,6 +36,9 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
  */
 Rid RmFileHandle::insert_record(char* buf, Context* context) {
     // Todo:
+    // 0. 加表锁
+    // context->lock_mgr_->lock_IX_on_table(context->txn_,fd_);
+    context->lock_mgr_->lock_exclusive_on_table(context->txn_,fd_);
     // 1. 获取当前未满的page handle
     RmPageHandle page_handle = create_page_handle();
     // 2. 在page handle中找到空闲slot位置
@@ -57,8 +61,9 @@ Rid RmFileHandle::insert_record(char* buf, Context* context) {
  * @param {Rid&} rid 要插入记录的位置
  * @param {char*} buf 要插入记录的数据
  */
-void RmFileHandle::insert_record(const Rid& rid, char* buf) {
+void RmFileHandle::insert_record(const Rid& rid, char* buf, Context* context) {
     //NEED REVISIT
+    // 这个函数是不是从来没被调用过
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
     char* obj_slot = page_handle.get_slot(rid.slot_no);
     memcpy(obj_slot,buf,file_hdr_.record_size);
@@ -78,6 +83,7 @@ void RmFileHandle::insert_record(const Rid& rid, char* buf) {
 void RmFileHandle::delete_record(const Rid& rid, Context* context) {
     // Todo:
     // 0. 加行锁
+    context->lock_mgr_->lock_IX_on_table(context->txn_,fd_);
     context->lock_mgr_->lock_exclusive_on_record(context->txn_,rid,fd_);
     // 1. 获取指定记录所在的page handle
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
@@ -100,6 +106,7 @@ void RmFileHandle::delete_record(const Rid& rid, Context* context) {
 void RmFileHandle::update_record(const Rid& rid, char* buf, Context* context) {
     // Todo:
     // 0. 加行锁
+    context->lock_mgr_->lock_IX_on_table(context->txn_,fd_);
     context->lock_mgr_->lock_exclusive_on_record(context->txn_,rid,fd_);
     // 1. 获取指定记录所在的page handle
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);

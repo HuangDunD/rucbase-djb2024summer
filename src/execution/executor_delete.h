@@ -53,6 +53,10 @@ class DeleteExecutor : public AbstractExecutor {
             auto rec = fh_->get_record(rids_[i],context_);
             RmRecord deleted_rec = RmRecord(rec->size);//lab4
             memcpy(deleted_rec.data,rec->data,rec->size);
+
+            fh_->delete_record(rids_[i],context_); // 包含锁检查，放在index前面
+            // TODO: delete mark?
+            
             for(int j=0;j<ih_num;j++){
                 IndexMeta index_meta = tab_.indexes[j];
                 // 按顺序拼接多级索引各个列的值，得到key
@@ -68,9 +72,6 @@ class DeleteExecutor : public AbstractExecutor {
                 // 调用delete_entry删除该key
                 ihs[j]->delete_entry(key,context_->txn_);
             }
-
-            fh_->delete_record(rids_[i],context_);
-            // TODO: delete mark?
 
             // lab4 modify write_set
             WriteRecord* write_rec = new WriteRecord(WType::DELETE_TUPLE,tab_name_,rids_[i],deleted_rec);
