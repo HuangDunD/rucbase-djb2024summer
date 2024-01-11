@@ -610,7 +610,6 @@ Rid IxIndexHandle::get_rid(const Iid &iid) const {
  * 可用*(int *)key转换回去
  */
 Iid IxIndexHandle::lower_bound(const char *key) {
-    //TODO: didn't understand
     auto node_pair = find_leaf_page(key,Operation::FIND,nullptr);
     auto node = node_pair.first;
     int index = node->lower_bound(key);

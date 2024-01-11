@@ -22,6 +22,8 @@ std::unordered_map<txn_id_t, Transaction *> TransactionManager::txn_map = {};
  */
 Transaction * TransactionManager::begin(Transaction* txn, LogManager* log_manager) {
     // Todo:
+    // 0. 给txn_map_上锁
+    std::scoped_lock lock{latch_}; 
     // 1. 判断传入事务参数是否为空指针
     // 2. 如果为空指针，创建新事务
     if(!txn){
@@ -44,6 +46,8 @@ Transaction * TransactionManager::begin(Transaction* txn, LogManager* log_manage
  */
 void TransactionManager::commit(Transaction* txn, LogManager* log_manager) {
     // Todo:
+    // 0. 给txn_map_上锁
+    std::scoped_lock lock{latch_}; 
     if(!txn){
         return;
     }
@@ -76,6 +80,8 @@ void TransactionManager::commit(Transaction* txn, LogManager* log_manager) {
  */
 void TransactionManager::abort(Transaction * txn, LogManager *log_manager) {
     // Todo:
+    // 0. 给txn_map_上锁
+    std::scoped_lock lock{latch_}; 
     if(!txn){
         return;
     }
