@@ -29,55 +29,25 @@ class DeleteExecutor : public AbstractExecutor {
                    std::vector<Rid> rids, Context *context) {
         sm_manager_ = sm_manager;
         tab_name_ = tab_name;
+        // 获取需要删除的表
         tab_ = sm_manager_->db_.get_table(tab_name);
+        // 获取需要删除的表的数据文件句柄（RmFileHandle）
         fh_ = sm_manager_->fhs_.at(tab_name).get();
         conds_ = conds;
+        // @NOTE: 为了方便上手，我们将所有需要删除的record的rid初始化在了Delete算子的上下文信息中
         rids_ = rids;
         context_ = context;
     }
 
     std::unique_ptr<RmRecord> Next() override {
-        // 对于rids_中的每一个Rid
-        // 一方面，要从fh_调用delete_record删除记录
-        // 另一方面，要从每个索引里删除这条记录对应的项delete_entry
-        // 1. 从TabMeta tab_获取所有的索引列，从sm_manager_拿到所有的索引句柄
-        int ih_num = tab_.indexes.size();
-        std::vector<IxIndexHandle*> ihs(ih_num);
-        for(int i=0;i<ih_num;i++){
-            ihs[i] = (sm_manager_->ihs_.at(sm_manager_->get_ix_manager()->get_index_name(tab_name_,tab_.indexes[i].cols))).get();
-        }
-        // 2.遍历每一个待删除的rid，进行对应的删除操作
-        // TODO:是否需要检查conds？
-        int rid_num = rids_.size();
-        for(int i=0;i<rid_num;i++){
-            auto rec = fh_->get_record(rids_[i],context_);
-            RmRecord deleted_rec = RmRecord(rec->size);//lab4
-            memcpy(deleted_rec.data,rec->data,rec->size);
-
-            fh_->delete_record(rids_[i],context_); // 包含锁检查，放在index前面
-            // TODO: delete mark?
+        // Todo:
+        // 1. 遍历所有需要删除的record的rid
+        // 2. 将指定rid的record通过RmFileHandle的delete_record函数从表数据文件中删除
+        // 3. 如果表上存在索引，
+        // 4. 将指定rid的record通过IxIndexHandle的delete_entry函数从索引文件中删除
+        // lab4: 记录删除操作（for transaction rollback）
             
-            for(int j=0;j<ih_num;j++){
-                IndexMeta index_meta = tab_.indexes[j];
-                // 按顺序拼接多级索引各个列的值，得到key
-                char* key = new char[index_meta.col_tot_len+1];
-                key[0] = '\0';
-                int curlen = 0;
-                for(int k=0;k<index_meta.col_num;k++){
-                    // strncat(key,rec->data+index_meta.cols[k].offset,index_meta.cols[k].len);
-                    memcpy(key+curlen,rec->data+index_meta.cols[k].offset,index_meta.cols[k].len);
-                    curlen += index_meta.cols[k].len;
-                    key[curlen] = '\0';
-                }
-                // 调用delete_entry删除该key
-                ihs[j]->delete_entry(key,context_->txn_);
-            }
-
-            // lab4 modify write_set
-            WriteRecord* write_rec = new WriteRecord(WType::DELETE_TUPLE,tab_name_,rids_[i],deleted_rec);
-            context_->txn_->append_write_record(write_rec);
-        }
-        // TODO: return what
+        // insert和delete操作不需要返回record对应指针，返回nullptr即可
         return nullptr;
     }
 
