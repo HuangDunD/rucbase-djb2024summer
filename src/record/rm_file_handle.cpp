@@ -17,7 +17,7 @@ See the Mulan PSL v2 for more details. */
  * @return {unique_ptr<RmRecord>} rid对应的记录对象指针
  */
 std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* context) const {
-    // !djb Todo:
+    // Todo:
     // 0. 加行锁，这里加S是因为之后还会调用update和delete，那里面会有exclusive上锁操作
     // 但在seqscan里会遍历找get_record并判断条件，在这个过程中一直在获取行锁
     context->lock_mgr_->lock_IS_on_table(context->txn_,fd_);
@@ -35,7 +35,7 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
  * @return {Rid} 插入的记录的记录号（位置）
  */
 Rid RmFileHandle::insert_record(char* buf, Context* context) {
-    // ! djb Todo:
+    // Todo:
     // 0. 加表锁
     // context->lock_mgr_->lock_IX_on_table(context->txn_,fd_);
     context->lock_mgr_->lock_exclusive_on_table(context->txn_,fd_);
