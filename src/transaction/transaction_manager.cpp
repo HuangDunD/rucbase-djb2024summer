@@ -29,8 +29,6 @@ Transaction * TransactionManager::begin(Transaction* txn, LogManager* log_manage
     if(!txn){
         txn = new Transaction(next_txn_id_);
         next_txn_id_++;
-        // TODO
-        // txn->set_txn_mode();
         txn->set_start_ts(next_timestamp_);
     }
     // 3. 把开始事务加入到全局事务表中
@@ -54,7 +52,6 @@ void TransactionManager::commit(Transaction* txn, LogManager* log_manager) {
     // 1. 如果存在未提交的写操作，提交所有的写操作
     auto write_set = txn->get_write_set();
     while(!write_set->empty()){
-        // TODO
         write_set->pop_front();
     }
     // 2. 释放所有锁
@@ -65,11 +62,9 @@ void TransactionManager::commit(Transaction* txn, LogManager* log_manager) {
         }
     }
     lock_set->clear();
-    // 3. 释放事务相关资源， eg.锁集
-    // TODO
-    // 4. 把事务日志刷入磁盘中
+    // 3. 把事务日志刷入磁盘中, 在rucbase-lab不涉及
     log_manager->flush_log_to_disk();
-    // 5. 更新事务状态
+    // 4. 更新事务状态
     txn->set_state(TransactionState::COMMITTED);
 }
 
@@ -111,10 +106,9 @@ void TransactionManager::abort(Transaction * txn, LogManager *log_manager) {
         }
     }
     lock_set->clear();
-    // 3. 清空事务相关资源，eg.锁集
-    // 4. 把事务日志刷入磁盘中
+    // 3. 把事务日志刷入磁盘中, 在rucbase-lab不涉及
     log_manager->flush_log_to_disk();
-    // 5. 更新事务状态
+    // 4. 更新事务状态
     txn->set_state(TransactionState::ABORTED);
 }
 

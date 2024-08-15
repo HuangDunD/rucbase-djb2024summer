@@ -27,7 +27,6 @@ bool LockManager::lock_shared_on_record(Transaction* txn, const Rid& rid, int ta
         return false;
     }
     else if(txn_stat == TransactionState::ABORTED || txn_stat == TransactionState::COMMITTED){
-        // TODO how to handle this
         return false; 
     }    
     txn->set_state(TransactionState::GROWING);
