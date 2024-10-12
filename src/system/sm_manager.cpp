@@ -71,13 +71,8 @@ void SmManager::create_db(const std::string& db_name) {
  * @param {string&} db_name 数据库名称，与文件夹同名
  */
 void SmManager::drop_db(const std::string& db_name) {
-    if (!is_dir(db_name)) {
-        throw DatabaseNotFoundError(db_name);
-    }
-    std::string cmd = "rm -r " + db_name;
-    if (system(cmd.c_str()) < 0) {
-        throw UnixError();
-    }
+    // ! dbj1013 TODO
+    
 }
 
 /**

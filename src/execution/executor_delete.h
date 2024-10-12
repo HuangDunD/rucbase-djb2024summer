@@ -40,7 +40,7 @@ class DeleteExecutor : public AbstractExecutor {
     }
 
     std::unique_ptr<RmRecord> Next() override {
-        // Todo:
+        // !djb20241013 Todo:
         // 1. 遍历所有需要删除的record的rid
         // 2. 将指定rid的record通过RmFileHandle的delete_record函数从表数据文件中删除
         // 3. 如果表上存在索引，
