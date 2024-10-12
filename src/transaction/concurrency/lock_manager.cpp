@@ -67,58 +67,12 @@ bool LockManager::lock_shared_on_record(Transaction* txn, const Rid& rid, int ta
  * @param {int} tab_fd 记录所在的表的fd
  */
 bool LockManager::lock_exclusive_on_record(Transaction* txn, const Rid& rid, int tab_fd) {
-    // 0.
-    std::unique_lock<std::mutex> lock{latch_};
-    // 1.
-    TransactionState txn_stat = txn->get_state();
-    if(txn_stat == TransactionState::SHRINKING){
-        throw TransactionAbortException(txn->get_transaction_id(),AbortReason::LOCK_ON_SHIRINKING);
-        return false;
-    }
-    else if(txn_stat == TransactionState::ABORTED || txn_stat == TransactionState::COMMITTED){
-        // TODO how to handle this
-        return false;
-    }
-    txn->set_state(TransactionState::GROWING);
-    // 2. 检查是否有其他事务的锁，任何锁都会与写锁冲突
-    //    扫描的同时记录下本事务对该记录加的锁
-    LockDataId rec_lockID = LockDataId(tab_fd,rid,LockDataType::RECORD);
-    std::list<LockRequest>::iterator txn_rlock_it;
-    bool self_rlock_found =false;
-    for(auto it = lock_table_[rec_lockID].request_queue_.begin();it!=lock_table_[rec_lockID].request_queue_.end();++it){
-        if(it->txn_id_ != txn->get_transaction_id()){
-            throw TransactionAbortException(txn->get_transaction_id(),AbortReason::DEADLOCK_PREVENTION);
-            return false;
-        }
-        else{
-            if(it->lock_mode_ == LockMode::EXLUCSIVE){
-                return true;
-            }
-            else{
-                // 这里不直接升级的原因是防止：本事务读 B事务读 应该abort本事务 而不是直接升级
-                txn_rlock_it = it;
-                self_rlock_found = true;
-            }
-        }
-    }
+    // TODO 2.:
+    // 0. 对锁表加latch
+    // 1. 检查并更新事务状态是否遵循两阶段封锁原则
+    // 2. 检查锁表中的锁是否与当前申请的写锁冲突
     // 3. 检查本事务是否已经持有当前记录的锁，有读锁则升级成写锁
-    if(self_rlock_found){
-        // update lock_mode and group_lock_mode
-        txn_rlock_it->lock_mode_ = LockMode::EXLUCSIVE;
-        if(lock_table_[rec_lockID].group_lock_mode_ < GroupLockMode::X){
-            lock_table_[rec_lockID].group_lock_mode_ = GroupLockMode::X;
-        }
-        return true;
-    }
     // 4. 没有其它锁，也没有自身的锁，颁发新的锁
-    auto txn_locks = txn->get_lock_set();
-    txn_locks->insert(rec_lockID);
-    LockRequest lock_req = LockRequest(txn->get_transaction_id(),LockMode::EXLUCSIVE);
-    lock_req.granted_ = true;
-    lock_table_[rec_lockID].request_queue_.push_back(lock_req);
-    if(lock_table_[rec_lockID].group_lock_mode_ < GroupLockMode::X){
-        lock_table_[rec_lockID].group_lock_mode_ = GroupLockMode::X;
-    }
     return true;
 }
 

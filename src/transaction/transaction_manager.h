@@ -64,10 +64,6 @@ public:
 
     static std::unordered_map<txn_id_t, Transaction *> txn_map;     // 全局事务表，存放事务ID与事务对象的映射关系
 
-    void rollback_insert(const std::string& tab_name, const Rid &rid_, Context *context_);
-    void rollback_delete(const std::string& tab_name, const RmRecord& rec ,Context *context_);
-    void rollback_update(const std::string& tab_name, const Rid &rid_, const RmRecord& old_rec, Context *context_);
-
 private:
     ConcurrencyMode concurrency_mode_;      // 事务使用的并发控制算法，目前只需要考虑2PL
     std::atomic<txn_id_t> next_txn_id_{0};  // 用于分发事务ID
